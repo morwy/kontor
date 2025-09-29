@@ -1,0 +1,139 @@
+name: Create and publish release
+
+on: 
+  workflow_dispatch:
+    inputs:
+        version_part:
+          type: choice
+          required: true
+          description: Increment version
+          default: "NONE"
+          options: 
+          - NONE
+          - MAJOR
+          - MINOR
+          - MICRO
+          - DEV
+
+        pypi_publishing:
+          type: choice
+          required: true
+          description: "Publish to PyPI"
+          default: "NO"
+          options:
+            - "YES"
+            - "NO"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+        contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: "recursive"
+
+    - name: Read branch name
+      id: read_branch
+      shell: bash
+      run: echo "BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.13'
+        architecture: x64
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+  
+    - name: Increase package version
+      id: version
+      run: |
+        python -m ProjectVersion INCREMENT_VERSION ${{ inputs.version_part }}
+        NEW_VERSION=$(python -m ProjectVersion GET_VERSION)
+        echo "NEW_TAG_NAME=$NEW_VERSION" >> $GITHUB_OUTPUT
+      
+    - name: Commit update version file
+      if: ${{ inputs.version_part != 'NONE' }}
+      id: commit-version-file
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        FILE_TO_COMMIT: setup.cfg
+        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.BRANCH_NAME }}
+        MESSAGE: "chore(release): prepare for upcoming release (setup.cfg)"
+      run: |
+        export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
+        export CONTENT=$( base64 -i $FILE_TO_COMMIT )
+        gh api --method PUT /repos/:owner/:repo/contents/$FILE_TO_COMMIT \
+          --field message="$MESSAGE" \
+          --field content="$CONTENT" \
+          --field encoding="base64" \
+          --field branch="$DESTINATION_BRANCH" \
+          --field sha="$SHA"
+          
+    - name: Generate a changelog
+      uses: orhun/git-cliff-action@v4
+      id: git-cliff-release-entry
+      with:
+        config: cliff.toml
+        args: --verbose --strip all --tag v${{ steps.version.outputs.NEW_TAG_NAME }} --unreleased
+      env:
+        OUTPUT: CHANGES.md
+
+    - name: Get changelog since last release
+      uses: orhun/git-cliff-action@v4
+      id: git-cliff-file
+      with:
+        config: cliff.toml
+        args: --verbose --tag v${{ steps.version.outputs.NEW_TAG_NAME }}
+      env:
+        OUTPUT: CHANGELOG.md
+  
+    - name: Commit CHANGELOG.md
+      id: change-log-commit
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        FILE_TO_COMMIT: CHANGELOG.md
+        DESTINATION_BRANCH: ${{ steps.read_branch.outputs.BRANCH_NAME }}
+        MESSAGE: "chore(release): prepare for upcoming release (CHANGELOG.md)"
+      run: |
+        export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
+        export CONTENT=$( base64 -i $FILE_TO_COMMIT )
+        gh api --method PUT /repos/:owner/:repo/contents/$FILE_TO_COMMIT \
+          --field message="$MESSAGE" \
+          --field content="$CONTENT" \
+          --field encoding="base64" \
+          --field branch="$DESTINATION_BRANCH" \
+          --field sha="$SHA"
+
+    - name: Build package
+      run: python -m build
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: "Python package"
+        path: |
+          dist/kontor-*.tar.gz
+          dist/kontor-*.whl
+        if-no-files-found: error
+
+    - name: Create release entry
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "dist/kontor-*.tar.gz, dist/kontor-*.whl"
+        body: "${{ steps.git-cliff-release-entry.outputs.content }}"
+        tag: "v${{ steps.version.outputs.NEW_TAG_NAME }}"
+
+    - name: Publish package to PyPI
+      if: ${{ github.event.inputs.pypi_publishing == 'YES' }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}

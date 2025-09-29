@@ -1,0 +1,15 @@
+{
+    "ip_address": "localhost",
+    "port": 5690,
+    "chunk_size_kilobytes": 256,
+    "client_idle_timeout_seconds": 30,
+    "max_storage_period_hours": 0,
+    "max_parallel_connections": 100,
+    "max_consequent_client_procedures": 1,
+    "max_grace_shutdown_timeout_seconds": 300,
+    "forced_ssl_usage": false,
+    "certificate_path": "",
+    "certificate_key_path": "",
+    "procedures": {
+    }
+}
