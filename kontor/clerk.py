@@ -4,7 +4,6 @@ import binascii
 import dataclasses
 import datetime
 import glob
-import json
 import logging
 import os
 import pathlib
@@ -88,7 +87,7 @@ class Clerk:
 
             return True
 
-        except Exception as exception:
+        except Exception as exception: # pylint: disable=broad-except
             logging.exception(
                 "%s: Caught exception during file access checkup (%s).",
                 address,
@@ -109,7 +108,7 @@ class Clerk:
 
             return True
 
-        except Exception as exception:
+        except Exception as exception: # pylint: disable=broad-except
             logging.exception(
                 "%s: Caught exception during file access checkup (%s).",
                 address,
@@ -558,7 +557,7 @@ class Clerk:
         except ConnectionBrokenException:
             logging.info("%s: Applicant disconnected.", self.__address)
 
-        except Exception as exception:
+        except Exception as exception: # pylint: disable=broad-except
             logging.exception("%s: %s.", self.__address, str(exception))
 
         finally:
