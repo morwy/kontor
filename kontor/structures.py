@@ -33,6 +33,7 @@ class ProcedureProtocol:
     Attributes:
         name: The name of the procedure.
         operation: A description of the operation performed by the procedure.
+        timeout_in_seconds: The maximum time in seconds that the procedure can take to complete. Default is 60 seconds.
         error_codes: A list of error codes that can be returned by the procedure in case of failure.
         max_repeats_if_failed: The maximum number of times the clerk can repeat the procedure if it fails.
         time_seconds_between_repeats: The time in seconds that the clerk must wait between repeat attempts of the procedure after a failure.
@@ -41,6 +42,8 @@ class ProcedureProtocol:
 
     name: str = ""
     operation: str = ""
+
+    timeout_in_seconds: int = 60
 
     error_codes: list = field(default_factory=list)
 

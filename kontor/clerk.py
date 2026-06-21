@@ -464,6 +464,7 @@ class Clerk:
                                 text=True,
                                 universal_newlines=True,
                                 check=False,
+                                timeout=procedure_protocol.timeout_in_seconds,
                             )
 
                             if result.returncode in procedure_protocol.error_codes:
