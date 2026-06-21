@@ -11,9 +11,9 @@ import ssl
 import threading
 import time
 from logging.handlers import TimedRotatingFileHandler
-from dacite import from_dict
 
 import pkg_resources
+from dacite import Config, from_dict
 
 from kontor.clerk import Clerk
 from kontor.exceptions import (
@@ -152,6 +152,7 @@ class Bureau:
         self.__configuration = from_dict(
             data_class=BureauOperationProtocol,
             data=configuration_json,
+            config=Config(check_types=False)
         )
 
     def __save_configuration_to_json_file(self, configuration_filepath=None):

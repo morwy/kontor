@@ -429,9 +429,10 @@ class Clerk:
                     for file_path in file_paths:
                         procedure_protocol = self.__configuration.procedures[procedure]
                         if type(procedure_protocol) is dict:
-                            procedure_protocol: ProcedureProtocol = from_dict(
+                            procedure_protocol = from_dict(
                                 data_class=ProcedureProtocol,
                                 data=self.__configuration.procedures[procedure],
+                                config=Config(check_types=False)
                             )
 
                         operation = procedure_protocol.operation
