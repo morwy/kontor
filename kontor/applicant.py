@@ -14,8 +14,8 @@ import time
 import uuid
 import zipfile
 from enum import Enum
+from importlib.metadata import version
 
-import pkg_resources
 from dacite import Config, from_dict
 
 from kontor.defines import FileType
@@ -84,11 +84,11 @@ class BureauApplicant:
         )
 
         try:
-            kontor_version = pkg_resources.get_distribution("kontor").version
+            kontor_version = version("kontor")
             logging.info(
                 "Initializing the kontor applicant of version %s.", kontor_version
             )
-        except pkg_resources.DistributionNotFound:
+        except Exception as _: # pylint: disable=broad-except
             logging.warning("Kontor applicant version was not found.")
 
     def __connect(self, server_ip_address: str, server_port: int):

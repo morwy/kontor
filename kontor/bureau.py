@@ -10,9 +10,9 @@ import socket
 import ssl
 import threading
 import time
+from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
 
-import pkg_resources
 from dacite import Config, from_dict
 
 from kontor.clerk import Clerk
@@ -62,11 +62,11 @@ class Bureau:
         )
 
         try:
-            kontor_version = pkg_resources.get_distribution("kontor").version
+            kontor_version = version("kontor")
             logging.info(
                 "Initializing the kontor bureau of version %s.", kontor_version
             )
-        except pkg_resources.DistributionNotFound:
+        except Exception as _: # pylint: disable=broad-except
             logging.warning("Kontor bureau version was not found.")
 
         self.__parse_configuration_json_file()
