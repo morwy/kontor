@@ -481,12 +481,21 @@ class Clerk:
                                         procedure_protocol.time_seconds_between_repeats
                                     )
                                     continue
-                                else:
-                                    is_procedure_failed = True
-                                    break
-
-                            else:
+                                
+                                is_procedure_failed = True
                                 break
+
+                            break
+
+                        if procedure_protocol.time_seconds_between_procedures > 0:
+                            logging.info(
+                                "%s: Waiting for %d seconds before next procedure execution.",
+                                self.__address,
+                                procedure_protocol.time_seconds_between_procedures,
+                            )
+                            time.sleep(
+                                procedure_protocol.time_seconds_between_procedures
+                            )
 
                         if is_procedure_failed:
                             procedure_receipt = ProcedureReceiptMessage(

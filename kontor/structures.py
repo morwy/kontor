@@ -34,8 +34,9 @@ class ProcedureProtocol:
         name: The name of the procedure.
         operation: A description of the operation performed by the procedure.
         error_codes: A list of error codes that can be returned by the procedure in case of failure.
-        max_repeats_if_failed: The maximum number of times the applicant can repeat the procedure if it fails.
-        time_seconds_between_repeats: The time in seconds that the applicant must wait between repeat
+        max_repeats_if_failed: The maximum number of times the clerk can repeat the procedure if it fails.
+        time_seconds_between_repeats: The time in seconds that the clerk must wait between repeat attempts of the procedure after a failure.
+        time_seconds_between_procedures: The time in seconds that the clerk must wait between executing this procedure and any subsequent procedure, regardless of success or failure. A value of 0 means no waiting time is required between procedures.
     """
 
     name: str = ""
@@ -45,6 +46,8 @@ class ProcedureProtocol:
 
     max_repeats_if_failed: int = 3
     time_seconds_between_repeats: int = 10
+
+    time_seconds_between_procedures: int = 0
 
 
 @dataclass
