@@ -19,30 +19,20 @@ from enum import Enum
 from dacite import Config, from_dict
 
 from kontor.defines import FileType, TransmissionType
-from kontor.exceptions import (
-    AuthenticationFailureException,
-    ConnectionBrokenException,
-    InvalidMessageFormatException,
-    ProcedureApprovalException,
-    ProcedureExecutionException,
-    UnexpectedMessageException,
-)
-from kontor.functions import (
-    send_file,
-    send_message,
-    wait_and_receive_file,
-    wait_and_receive_message,
-)
-from kontor.structures import (
-    AuthRequestMessage,
-    AuthResponseMessage,
-    BureauOperationProtocol,
-    FileReceivingReceiptMessage,
-    ProcedureProtocol,
-    ProcedureReceiptMessage,
-    ProcedureRequestMessage,
-    ProcedureResponseMessage,
-)
+from kontor.exceptions import (AuthenticationFailureException,
+                               ConnectionBrokenException,
+                               InvalidMessageFormatException,
+                               ProcedureApprovalException,
+                               ProcedureExecutionException,
+                               UnexpectedMessageException)
+from kontor.functions import (send_file, send_message, wait_and_receive_file,
+                              wait_and_receive_message)
+from kontor.structures import (AuthRequestMessage, AuthResponseMessage,
+                               BureauOperationProtocol,
+                               FileReceivingReceiptMessage, ProcedureProtocol,
+                               ProcedureReceiptMessage,
+                               ProcedureRequestMessage,
+                               ProcedureResponseMessage)
 
 
 class Clerk:

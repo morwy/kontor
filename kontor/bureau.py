@@ -16,18 +16,13 @@ import pkg_resources
 from dacite import Config, from_dict
 
 from kontor.clerk import Clerk
-from kontor.exceptions import (
-    MissingWorkingDirectoryException,
-    ProcedureAlreadyPresentException,
-    ServerCertificateKeyMissingException,
-    ServerCertificateMissingException,
-    ServerStartTimeoutException,
-)
-from kontor.structures import (
-    ApplicantDossier,
-    BureauOperationProtocol,
-    ProcedureProtocol,
-)
+from kontor.exceptions import (MissingWorkingDirectoryException,
+                               ProcedureAlreadyPresentException,
+                               ServerCertificateKeyMissingException,
+                               ServerCertificateMissingException,
+                               ServerStartTimeoutException)
+from kontor.structures import (ApplicantDossier, BureauOperationProtocol,
+                               ProcedureProtocol)
 
 
 class Bureau:
