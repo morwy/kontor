@@ -18,6 +18,7 @@ from enum import Enum
 
 from dacite import Config, from_dict
 
+from kontor import functions
 from kontor.defines import FileType, TransmissionType
 from kontor.exceptions import (AuthenticationFailureException,
                                ConnectionBrokenException,
@@ -25,8 +26,6 @@ from kontor.exceptions import (AuthenticationFailureException,
                                ProcedureApprovalException,
                                ProcedureExecutionException,
                                UnexpectedMessageException)
-from kontor.functions import (send_file, send_message, wait_and_receive_file,
-                              wait_and_receive_message)
 from kontor.structures import (AuthRequestMessage, AuthResponseMessage,
                                BureauOperationProtocol,
                                FileReceivingReceiptMessage, ProcedureProtocol,
@@ -40,13 +39,17 @@ class Clerk:
         self,
         bureau_operation_protocol: BureauOperationProtocol,
         temp_directory: str,
-        applicant,
-        address,
+        logger: logging.Logger,
+        applicant: socket.socket | ssl.SSLSocket,
+        address: tuple[str, int],
         is_user_auth_correct_callback,
         is_procedure_allowed_for_user_callback,
     ):
         self.__configuration = bureau_operation_protocol
         self.__temp_directory = temp_directory
+
+        self.__logger = logger
+        functions.logger = self.__logger
 
         self.__applicant = applicant
         self.__address = address
@@ -58,11 +61,11 @@ class Clerk:
         )
 
         if isinstance(self.__applicant, ssl.SSLSocket):
-            logging.debug(
+            self.__logger.debug(
                 "%s: Clerk is communicating with Applicant via SSL connection.", address
             )
         elif isinstance(self.__applicant, socket.socket):
-            logging.debug(
+            self.__logger.debug(
                 "%s: Clerk is communicating with Applicant via non-SSL connection.",
                 address,
             )
@@ -77,8 +80,8 @@ class Clerk:
 
             return True
 
-        except Exception as exception: # pylint: disable=broad-except
-            logging.exception(
+        except Exception as exception:  # pylint: disable=broad-except
+            self.__logger.exception(
                 "%s: Caught exception during file access checkup (%s).",
                 address,
                 str(exception),
@@ -98,8 +101,8 @@ class Clerk:
 
             return True
 
-        except Exception as exception: # pylint: disable=broad-except
-            logging.exception(
+        except Exception as exception:  # pylint: disable=broad-except
+            self.__logger.exception(
                 "%s: Caught exception during file access checkup (%s).",
                 address,
                 str(exception),
@@ -107,29 +110,29 @@ class Clerk:
             return False
 
     def __wait_until_file_is_accessible(self, address, file_path: str):
-        logging.debug("Checking accessibility of file '%s'", file_path)
+        self.__logger.debug("Checking accessibility of file '%s'", file_path)
 
         max_retries = 12
         for current_retry in range(max_retries):
             is_file_accessible1 = self.__is_file_accessible1(address, file_path)
             if is_file_accessible1:
-                logging.debug(
+                self.__logger.debug(
                     "File '%s' was reported as accessible by os.access().", file_path
                 )
             else:
-                logging.debug(
+                self.__logger.debug(
                     "File '%s' was reported as inaccessible by os.access().",
                     file_path,
                 )
 
             # is_file_accessible2 = self.__is_file_accessible2(address, file_path)
             # if is_file_accessible2:
-            #     logging.debug(
+            #     self.__logger.debug(
             #         "File '%s' was reported as accessible by open() and os.rename() functions.",
             #         file_path,
             #     )
             # else:
-            #     logging.debug(
+            #     self.__logger.debug(
             #         "File '%s' was reported as inaccessible by open() and os.rename() functions.",
             #         file_path,
             #     )
@@ -137,7 +140,7 @@ class Clerk:
             if is_file_accessible1:
                 return
 
-            logging.info(
+            self.__logger.info(
                 "%s: Waiting until file will be accessible for procedure (%d out of %d retries).",
                 address,
                 current_retry,
@@ -146,11 +149,11 @@ class Clerk:
             time.sleep(5)
 
     def notify_about_shutdown(self):
-        logging.info("%s: Clerk was notified about shutdown.", self.__address)
+        self.__logger.info("%s: Clerk was notified about shutdown.", self.__address)
         self.__is_bureau_shutting_down = True
 
     def provide_service(self):
-        logging.info("%s: Starting new thread for connection.", self.__address)
+        self.__logger.info("%s: Starting new thread for connection.", self.__address)
 
         try:
             username = ""
@@ -160,12 +163,12 @@ class Clerk:
 
             is_connection_alive = True
             while not self.__is_bureau_shutting_down and is_connection_alive:
-                message_json = wait_and_receive_message(
+                message_json = functions.wait_and_receive_message(
                     self.__applicant, self.__address
                 )
 
                 if "type" not in message_json:
-                    logging.error(
+                    self.__logger.error(
                         "%s: No 'type' stated in the incoming message, terminating connection.",
                         self.__address,
                     )
@@ -178,12 +181,12 @@ class Clerk:
                         auth_response = AuthResponseMessage(
                             is_authenticated=False, message="Unexpected message type."
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(auth_response),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: User is trying to re-authenticate while already being authenticated, terminating connection.",
                             self.__address,
                         )
@@ -202,12 +205,12 @@ class Clerk:
                         auth_response = AuthResponseMessage(
                             is_authenticated=False, message="Incorrect message format."
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(auth_response),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: No username or password stated in the incoming authentication request, terminating connection.",
                             self.__address,
                         )
@@ -220,12 +223,12 @@ class Clerk:
                             is_authenticated=False,
                             message="Incorrect username or password.",
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(auth_response),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: Username or password is incorrect, terminating connection.",
                             self.__address,
                         )
@@ -238,7 +241,7 @@ class Clerk:
                     auth_response = AuthResponseMessage(
                         is_authenticated=True, message="Authentication successful."
                     )
-                    send_message(
+                    functions.send_message(
                         self.__applicant,
                         self.__address,
                         dataclasses.asdict(auth_response),
@@ -253,7 +256,7 @@ class Clerk:
                     pathlib.Path(user_temp_folder_path).mkdir(
                         parents=True, exist_ok=True
                     )
-                    logging.debug(
+                    self.__logger.debug(
                         "%s: Created temporary folder %s.",
                         self.__address,
                         user_temp_folder_path,
@@ -265,12 +268,12 @@ class Clerk:
                             is_ready_for_procedure=False,
                             message="User is not authenticated.",
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(procedure_response),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: User is not authenticated, terminating connection.",
                             self.__address,
                         )
@@ -290,12 +293,12 @@ class Clerk:
                             is_ready_for_procedure=False,
                             message="Incorrect message format.",
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(procedure_response),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: No file size, CRC32, name or procedure stated in the incoming authentication request, terminating connection.",
                             self.__address,
                         )
@@ -308,12 +311,12 @@ class Clerk:
                             is_ready_for_procedure=False,
                             message="User is not allowed to use selected procedure.",
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(procedure_response),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: User is not allowed to use selected procedure, terminating connection.",
                             self.__address,
                         )
@@ -325,7 +328,7 @@ class Clerk:
                         is_ready_for_procedure=True,
                         message="Procedure approved, ready to receive files.",
                     )
-                    send_message(
+                    functions.send_message(
                         self.__applicant,
                         self.__address,
                         dataclasses.asdict(procedure_response),
@@ -338,7 +341,7 @@ class Clerk:
                         user_temp_folder_path, procedure_request.file_name
                     )
 
-                    wait_and_receive_file(
+                    functions.wait_and_receive_file(
                         self.__applicant,
                         self.__address,
                         received_file_path,
@@ -350,7 +353,7 @@ class Clerk:
                         data = processed_file.read()
                         data_crc32 = binascii.crc32(data) & 0xFFFFFFFF
                         data_crc32_str = "%08X" % data_crc32
-                        logging.info(
+                        self.__logger.info(
                             "%s: Received file CRC32: %s.",
                             self.__address,
                             data_crc32_str,
@@ -361,12 +364,12 @@ class Clerk:
                             is_received_correctly=False,
                             message=f"File is received incorrectly, received CRC32 {data_crc32} differs to provided CRC32 {procedure_request.file_crc32}.",
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(procedure_receipt),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: File is received incorrectly, received CRC32 %s differs to provided CRC32 %s.",
                             self.__address,
                             data_crc32_str,
@@ -382,12 +385,12 @@ class Clerk:
                             is_received_correctly=False,
                             message=f"File is received incorrectly, received size {file_size_bytes} differs to provided size {procedure_request.file_size_bytes}.",
                         )
-                        send_message(
+                        functions.send_message(
                             self.__applicant,
                             self.__address,
                             dataclasses.asdict(procedure_receipt),
                         )
-                        logging.error(
+                        self.__logger.error(
                             "%s: File is received incorrectly, received size %d differs to provided size %d.",
                             self.__address,
                             file_size_bytes,
@@ -401,7 +404,7 @@ class Clerk:
                         is_received_correctly=True,
                         message="File is received correctly and being processed.",
                     )
-                    send_message(
+                    functions.send_message(
                         self.__applicant,
                         self.__address,
                         dataclasses.asdict(procedure_receipt),
@@ -422,7 +425,7 @@ class Clerk:
                             procedure_protocol = from_dict(
                                 data_class=ProcedureProtocol,
                                 data=self.__configuration.procedures[procedure],
-                                config=Config(check_types=False)
+                                config=Config(check_types=False),
                             )
 
                         operation = procedure_protocol.operation
@@ -447,7 +450,7 @@ class Clerk:
                                 self.__address, file_path
                             )
 
-                            logging.info(
+                            self.__logger.info(
                                 "%s: Executing procedure '%s' operation: '%s'. Retry %d of %d.",
                                 self.__address,
                                 procedure_protocol.name,
@@ -472,7 +475,7 @@ class Clerk:
                                     retry_counter
                                     != procedure_protocol.max_repeats_if_failed - 1
                                 ):
-                                    logging.warning(
+                                    self.__logger.warning(
                                         "%s: Procedure failed with return code %d and error message %s.",
                                         self.__address,
                                         result.returncode,
@@ -482,14 +485,14 @@ class Clerk:
                                         procedure_protocol.time_seconds_between_repeats
                                     )
                                     continue
-                                
+
                                 is_procedure_failed = True
                                 break
 
                             break
 
                         if procedure_protocol.time_seconds_between_procedures > 0:
-                            logging.info(
+                            self.__logger.info(
                                 "%s: Waiting for %d seconds before next procedure execution.",
                                 self.__address,
                                 procedure_protocol.time_seconds_between_procedures,
@@ -503,12 +506,12 @@ class Clerk:
                                 is_processed_correctly=False,
                                 message=f"Procedure failed with return code {result.returncode} and error message {result.stdout}.",
                             )
-                            send_message(
+                            functions.send_message(
                                 self.__applicant,
                                 self.__address,
                                 dataclasses.asdict(procedure_receipt),
                             )
-                            logging.error(
+                            self.__logger.error(
                                 "%s: Procedure failed with return code %d and error message %s.",
                                 self.__address,
                                 result.returncode,
@@ -535,7 +538,7 @@ class Clerk:
                             binascii.crc32(processed_data) & 0xFFFFFFFF
                         )
                         processed_data_crc32_str = "%08X" % processed_data_crc32
-                        logging.info(
+                        self.__logger.info(
                             "%s: Processed file CRC32: %s.",
                             self.__address,
                             processed_data_crc32_str,
@@ -547,35 +550,37 @@ class Clerk:
                         file_crc32=processed_data_crc32_str,
                         file_size_bytes=processed_file_size_bytes,
                     )
-                    send_message(
+                    functions.send_message(
                         self.__applicant,
                         self.__address,
                         dataclasses.asdict(procedure_receipt),
                     )
 
-                    send_file(self.__applicant, self.__address, processed_data)
+                    functions.send_file(
+                        self.__applicant, self.__address, processed_data
+                    )
 
         except ConnectionBrokenException:
-            logging.info("%s: Applicant disconnected.", self.__address)
+            self.__logger.info("%s: Applicant disconnected.", self.__address)
 
-        except Exception as exception: # pylint: disable=broad-except
-            logging.exception("%s: %s.", self.__address, str(exception))
+        except Exception as exception:  # pylint: disable=broad-except
+            self.__logger.exception("%s: %s.", self.__address, str(exception))
 
         finally:
             try:
                 self.__applicant.shutdown(socket.SHUT_RDWR)
             except OSError as exception:
-                logging.warning(
+                self.__logger.warning(
                     "Caught low priority exception during applicant disconnect."
                 )
-                logging.exception(exception)
+                self.__logger.exception(exception)
 
             self.__applicant.close()
 
             if self.__configuration.max_storage_period_hours == 0:
                 if os.path.exists(user_temp_folder_path):
                     shutil.rmtree(user_temp_folder_path)
-                    logging.debug(
+                    self.__logger.debug(
                         "%s: Removed temporary folder %s.",
                         self.__address,
                         user_temp_folder_path,

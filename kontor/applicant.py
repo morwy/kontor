@@ -41,6 +41,8 @@ from kontor.structures import (
     ProcedureResponseMessage,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class BureauApplicant:
     def __init__(
@@ -51,8 +53,8 @@ class BureauApplicant:
         file_transfer_timeout_seconds: int = 300,
         enable_file_logging: bool = False,
     ):
-        self.__address = ()
-        self.__socket = None
+        self.__address: tuple[str, int] = ("", 0)
+        self.__socket: socket.socket | None = None
         self.__ssl_context = ssl.create_default_context()
 
         self.__working_directory = os.getcwd()
@@ -65,31 +67,22 @@ class BureauApplicant:
         self.__communication_timeout_seconds = communication_timeout_seconds
         self.__file_transfer_timeout_seconds = file_transfer_timeout_seconds
 
-        #
-        # Enable logging both to file and stdout.
-        #
-        handlers = [logging.StreamHandler()]
-
         if enable_file_logging:
             log_directory = os.path.dirname(os.path.realpath(__file__))
             timestamp = datetime.datetime.today().strftime("%Y%m%d_%H%M%S")
             filename = timestamp + "_applicant.log"
             filepath = os.path.join(log_directory, filename)
-            handlers.append(logging.FileHandler(filepath))
-
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s:%(levelname)s %(message)s",
-            handlers=handlers,
-        )
+            logger.addHandler(
+                logging.FileHandler(filename=filepath, mode="a", encoding="utf-8")
+            )
 
         try:
             kontor_version = version("kontor")
-            logging.info(
+            logger.info(
                 "Initializing the kontor applicant of version %s.", kontor_version
             )
-        except Exception as _: # pylint: disable=broad-except
-            logging.warning("Kontor applicant version was not found.")
+        except Exception as _:  # pylint: disable=broad-except
+            logger.warning("Kontor applicant version was not found.")
 
     def __connect(self, server_ip_address: str, server_port: int):
         is_server_use_ssl = False
@@ -105,8 +98,8 @@ class BureauApplicant:
                 _ = ssl.get_server_certificate((server_ip_address, server_port))
 
             is_server_use_ssl = True
-        except Exception as exception:
-            logging.info(
+        except Exception as exception: # pylint: disable=broad-except
+            logger.info(
                 "Server does not use SSL, falling back to non-SSL connection. Exception message: %s.",
                 exception,
             )
@@ -117,9 +110,9 @@ class BureauApplicant:
         try:
             for current_retry in range(self.__max_connection_retries):
                 if current_retry == 0:
-                    logging.info("Connecting to %s:%d.", server_ip_address, server_port)
+                    logger.info("Connecting to %s:%d.", server_ip_address, server_port)
                 else:
-                    logging.info(
+                    logger.info(
                         "Connecting to %s:%d (Retry %d out of %d).",
                         server_ip_address,
                         server_port,
@@ -147,18 +140,20 @@ class BureauApplicant:
 
             time.sleep(self.__time_seconds_between_connection_retries)
 
-        self.__address = (
-            self.__socket.getsockname()[0],
-            self.__socket.getsockname()[1],
-        )
+        if self.__socket is not None:
+            self.__address = (
+                self.__socket.getsockname()[0],
+                self.__socket.getsockname()[1],
+            )
 
     def __disconnect(self):
-        logging.info("%s: Closing the connection.", self.__address)
-        self.__socket.shutdown(socket.SHUT_RDWR)
-        self.__socket.close()
+        logger.info("%s: Closing the connection.", self.__address)
+        if self.__socket is not None:
+            self.__socket.shutdown(socket.SHUT_RDWR)
+            self.__socket.close()
 
     def __authenticate(self, username: str, password: str):
-        logging.info("%s: Authenticating '%s' user.", self.__address, username)
+        logger.info("%s: Authenticating '%s' user.", self.__address, username)
 
         password_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
         auth_request = AuthRequestMessage(
@@ -174,9 +169,9 @@ class BureauApplicant:
         )
 
         if auth_response.is_authenticated:
-            logging.info("%s: Authentication succeed.", self.__address)
+            logger.info("%s: Authentication succeed.", self.__address)
         else:
-            logging.error(
+            logger.error(
                 "%s: Authentication failed with error %s.",
                 self.__address,
                 auth_response.message,
@@ -216,9 +211,9 @@ class BureauApplicant:
         )
 
         if procedure_response.is_ready_for_procedure:
-            logging.info("%s: Procedure was approved.", self.__address)
+            logger.info("%s: Procedure was approved.", self.__address)
         else:
-            logging.error(
+            logger.error(
                 "%s: Procedure was declined with error %s.",
                 self.__address,
                 procedure_response.message,
@@ -236,9 +231,9 @@ class BureauApplicant:
         )
 
         if file_receiving_receipt.is_received_correctly:
-            logging.info("%s: File was received correctly.", self.__address)
+            logger.info("%s: File was received correctly.", self.__address)
         else:
-            logging.error(
+            logger.error(
                 "%s: File was received with error %s.",
                 self.__address,
                 procedure_response.message,
@@ -248,7 +243,8 @@ class BureauApplicant:
             )
 
     def __wait_and_receive_result_file(self, file_path: str, overwrite_file: bool):
-        self.__socket.settimeout(self.__file_transfer_timeout_seconds)
+        if self.__socket is not None:
+            self.__socket.settimeout(self.__file_transfer_timeout_seconds)
 
         request_json_data = wait_and_receive_message(self.__socket, self.__address)
         procedure_receipt = from_dict(
@@ -258,11 +254,11 @@ class BureauApplicant:
         )
 
         if procedure_receipt.is_processed_correctly:
-            logging.info(
+            logger.info(
                 "%s: Procedure succeed, processed file is coming.", self.__address
             )
         else:
-            logging.error(
+            logger.error(
                 "%s: Procedure failed with error %s.",
                 self.__address,
                 procedure_receipt.message,
@@ -271,7 +267,8 @@ class BureauApplicant:
                 f"{self.__address}: Procedure failed with error {procedure_receipt.message}."
             )
 
-        self.__socket.settimeout(self.__communication_timeout_seconds)
+        if self.__socket is not None:
+            self.__socket.settimeout(self.__communication_timeout_seconds)
 
         corrected_file_path = file_path
         if not overwrite_file:
@@ -292,12 +289,10 @@ class BureauApplicant:
             data = processed_file.read()
             data_crc32 = binascii.crc32(data) & 0xFFFFFFFF
             data_crc32_str = "%08X" % data_crc32
-            logging.debug(
-                "%s: Received file CRC32: %s.", self.__address, data_crc32_str
-            )
+            logger.debug("%s: Received file CRC32: %s.", self.__address, data_crc32_str)
 
         if data_crc32_str != procedure_receipt.file_crc32:
-            logging.error(
+            logger.error(
                 "%s: File is received incorrectly, received CRC32 %s differs to provided CRC32 %s.",
                 self.__address,
                 data_crc32_str,
@@ -309,7 +304,7 @@ class BureauApplicant:
 
         file_size_bytes = os.path.getsize(corrected_file_path)
         if file_size_bytes != procedure_receipt.file_size_bytes:
-            logging.error(
+            logger.error(
                 "%s: File is received incorrectly, received size %d differs to provided size %d.",
                 self.__address,
                 file_size_bytes,
@@ -319,7 +314,7 @@ class BureauApplicant:
                 f"{self.__address}: File is received incorrectly, received size {file_size_bytes} differs to provided size {procedure_receipt.file_size_bytes}."
             )
 
-        logging.info(
+        logger.info(
             "%s: Processed file was received successfully, disconnecting.",
             self.__address,
         )
@@ -346,14 +341,14 @@ class BureauApplicant:
                 self.__wait_and_receive_result_file(file_path, overwrite_file)
                 break
 
-            except Exception as exception:
-                logging.error("Caught exception: '%s'.", type(exception))
+            except Exception as exception: # pylint: disable=broad-except
+                logger.error("Caught exception: '%s'.", type(exception))
                 if retry_index == (max_retries_if_failed - 1):
-                    logging.error(
+                    logger.error(
                         "Reached maximum attempts of retries (%d), failing now.",
                         max_retries_if_failed,
                     )
-                    logging.exception(exception)
+                    logger.exception(exception)
                     raise
 
                 time.sleep(seconds_between_retries)
@@ -399,7 +394,7 @@ class BureauApplicant:
             raise EmptyFileListException("Provided file list is empty!")
 
         if len(file_list) == 1:
-            logging.info("Only one file provided, redirecting to other function.")
+            logger.info("Only one file provided, redirecting to other function.")
             self.process_file(
                 server_ip_address,
                 server_port,
@@ -417,7 +412,7 @@ class BureauApplicant:
             self.__working_directory, str(uuid.uuid4()) + ".zip"
         )
 
-        logging.info(
+        logger.info(
             "Multiple files were provided, zipping them into archive: %s.",
             zip_file_path,
         )
@@ -446,9 +441,7 @@ class BureauApplicant:
                 for name in zip_file.namelist():
                     original_filepaths = [s for s in file_list if s.__contains__(name)]
                     for original_filepath in original_filepaths:
-                        logging.info(
-                            "Unzipping file %s to %s.", name, original_filepath
-                        )
+                        logger.info("Unzipping file %s to %s.", name, original_filepath)
 
                         original_folder_path = pathlib.Path(
                             original_filepath
@@ -457,5 +450,5 @@ class BureauApplicant:
                         zip_file.extract(name, original_folder_path)
         finally:
             if os.path.exists(zip_file_path):
-                logging.info("Deleting zip archive %s.", zip_file_path)
+                logger.info("Deleting zip archive %s.", zip_file_path)
                 os.remove(zip_file_path)

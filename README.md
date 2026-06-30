@@ -19,7 +19,7 @@ pip install kontor --upgrade
 
 ## Requirements & dependencies
 
-Minimum Python version supported is 3.7.
+Minimum Python version supported is 3.8.
 
 kontor relies on one external package called **dacite**.
 

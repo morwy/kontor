@@ -27,15 +27,15 @@ from kontor.structures import (ApplicantDossier, BureauOperationProtocol,
 
 class Bureau:
     def __init__(self, working_folder_path: str):
-        self.__socket: socket.socket = None
+        self.__socket: socket.socket | None = None
         self.__ssl_context = None
         self.__configuration: BureauOperationProtocol = BureauOperationProtocol()
         self.__is_server_started = False
         self.__is_bureau_shutting_down = False
 
-        self.__server_thread: threading.Thread = None
-        self.__client_threads = []
-        self.__clerks = []
+        self.__server_thread: threading.Thread | None = None
+        self.__client_threads: list[threading.Thread] = []
+        self.__clerks: list[Clerk] = []
 
         self.__working_directory = str(working_folder_path)
         pathlib.Path(self.__working_directory).mkdir(parents=True, exist_ok=True)
@@ -46,28 +46,37 @@ class Bureau:
         #
         # Enable daily logging both to file and stdout.
         #
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(
+            logging.Formatter("%(asctime)s:%(levelname)s %(message)s")
+        )
+
         log_directory = os.path.join(self.__working_directory, "logs")
         pathlib.Path(log_directory).mkdir(parents=True, exist_ok=True)
 
         filename = "bureau.log"
         filepath = os.path.join(log_directory, filename)
 
-        handler = TimedRotatingFileHandler(filepath, when="midnight", backupCount=60)
-        handler.suffix = "%Y%m%d"
-
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(asctime)s:%(levelname)s %(message)s",
-            handlers=[handler, logging.StreamHandler()],
+        file_handler = TimedRotatingFileHandler(
+            filepath, when="midnight", backupCount=60
         )
+        file_handler.suffix = "%Y%m%d"
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s:%(levelname)s %(message)s")
+        )
+
+        self.__logger = logging.getLogger(__name__)
+        self.__logger.setLevel(logging.DEBUG)
+        self.__logger.addHandler(stream_handler)
+        self.__logger.addHandler(file_handler)
 
         try:
             kontor_version = version("kontor")
-            logging.info(
+            self.__logger.info(
                 "Initializing the kontor bureau of version %s.", kontor_version
             )
-        except Exception as _: # pylint: disable=broad-except
-            logging.warning("Kontor bureau version was not found.")
+        except Exception as _:  # pylint: disable=broad-except
+            self.__logger.warning("Kontor bureau version was not found.")
 
         self.__parse_configuration_json_file()
 
@@ -86,7 +95,7 @@ class Bureau:
                 is_certificate_loaded = os.path.exists(certificate_path)
 
         if self.__configuration.forced_ssl_usage and not is_certificate_loaded:
-            logging.critical("Server certificate file is missing!")
+            self.__logger.critical("Server certificate file is missing!")
             raise ServerCertificateMissingException(
                 "Server certificate file is missing!"
             )
@@ -103,7 +112,7 @@ class Bureau:
                 is_certificate_key_loaded = os.path.exists(certificate_key_path)
 
         if self.__configuration.forced_ssl_usage and not is_certificate_key_loaded:
-            logging.critical("Server certificate key file is missing!")
+            self.__logger.critical("Server certificate key file is missing!")
             raise ServerCertificateKeyMissingException(
                 "Server certificate key file is missing!"
             )
@@ -114,13 +123,13 @@ class Bureau:
                 certfile=certificate_path, keyfile=certificate_key_path
             )
 
-            logging.info(
+            self.__logger.info(
                 "SSL certificate '%s' and its key '%s' were loaded successfully.",
                 certificate_path,
                 certificate_key_path,
             )
         else:
-            logging.info("No SSL certificate was loaded.")
+            self.__logger.info("No SSL certificate was loaded.")
 
     def __parse_configuration_json_file(self, configuration_filepath=None):
         """
@@ -147,7 +156,7 @@ class Bureau:
         self.__configuration = from_dict(
             data_class=BureauOperationProtocol,
             data=configuration_json,
-            config=Config(check_types=False)
+            config=Config(check_types=False),
         )
 
     def __save_configuration_to_json_file(self, configuration_filepath=None):
@@ -205,7 +214,7 @@ class Bureau:
         self.__clerks.remove(clerk)
         self.__client_threads.remove(threading.current_thread())
 
-        logging.info("%s: Thread for connection was closed.", address)
+        self.__logger.info("%s: Thread for connection was closed.", address)
 
     def add_user(self, username: str, password: str, allowed_procedures: list):
         if not os.path.exists(self.__working_directory):
@@ -279,18 +288,18 @@ class Bureau:
 
     def start(self):
         if not os.path.exists(self.__working_directory):
-            logging.critical("Working directory is not set, aborting start.")
+            self.__logger.critical("Working directory is not set, aborting start.")
             raise MissingWorkingDirectoryException(
                 "Working directory is not set, aborting start."
             )
 
         if not os.path.exists(self.__temp_directory):
-            logging.critical("Temporary directory is not set, aborting start.")
+            self.__logger.critical("Temporary directory is not set, aborting start.")
             raise MissingWorkingDirectoryException(
                 "Temporary directory is not set, aborting start."
             )
 
-        logging.info(
+        self.__logger.info(
             "Opening bureau's reception at %s:%d.",
             self.__configuration.ip_address,
             self.__configuration.port,
@@ -302,14 +311,14 @@ class Bureau:
         self.__socket.listen(self.__configuration.max_parallel_connections)
         self.__socket.settimeout(0.5)
 
-        logging.info("Starting to listen for incoming connections.")
+        self.__logger.info("Starting to listen for incoming connections.")
 
         self.__is_server_started = True
         while not self.__is_bureau_shutting_down:
             try:
                 client_socket, address = self.__socket.accept()
 
-                logging.info("New incoming connection from %s.", address)
+                self.__logger.info("New incoming connection from %s.", address)
 
                 client_socket.settimeout(
                     self.__configuration.client_idle_timeout_seconds
@@ -325,6 +334,7 @@ class Bureau:
                 clerk = Clerk(
                     self.__configuration,
                     self.__temp_directory,
+                    self.__logger,
                     selected_client_socket,
                     address,
                     self.__is_user_auth_correct,
@@ -348,8 +358,8 @@ class Bureau:
                 #
                 time.sleep(0.5)
 
-            except Exception as exception:
-                logging.info(
+            except Exception as exception:  # pylint: disable=broad-except
+                self.__logger.info(
                     "Caught exception during waiting for new connections. Exception %s.",
                     str(exception),
                 )
@@ -360,7 +370,7 @@ class Bureau:
         Gracefully shuts down the bureau, waiting for clerks to complete their job.
         Max wait is defined by bureau protocol.
         """
-        logging.info("Shutting down the bureau.")
+        self.__logger.info("Shutting down the bureau.")
 
         self.__is_bureau_shutting_down = True
 
@@ -373,7 +383,7 @@ class Bureau:
             and (time.process_time() - grace_shutdown_start_time)
             >= self.__configuration.max_grace_shutdown_timeout_seconds
         ):
-            logging.info(
+            self.__logger.info(
                 "Waiting for %d thread to complete their jobs (max wait %d seconds).",
                 len(self.__client_threads),
                 self.__configuration.max_grace_shutdown_timeout_seconds,
@@ -387,12 +397,13 @@ class Bureau:
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(
             (self.__configuration.ip_address, self.__configuration.port)
         )
-        self.__socket.close()
+        if self.__socket is not None:
+            self.__socket.close()
 
         if self.__server_thread is not None:
-            logging.info(
+            self.__logger.info(
                 "Server is running in async mode, waiting for thread to finish."
             )
             self.__server_thread.join()
 
-        logging.info("Shutdown complete.")
+        self.__logger.info("Shutdown complete.")
