@@ -199,5 +199,10 @@ def wait_and_receive_file(
 
         file_upload_time = time.time() - file_start_time
         logger.debug(
-            "%s: File receiving time is %.2f seconds.", address, file_upload_time
+            "%s: File receipt: %.2f seconds, %d bytes, %.2f MB/s or %.2f Mbps.",
+            address,
+            file_upload_time,
+            received_bytes,
+            received_bytes / file_upload_time / 1024 / 1024 if file_upload_time > 0 else 0,
+            received_bytes / file_upload_time / 1024 / 1024 * 8 if file_upload_time > 0 else 0
         )
