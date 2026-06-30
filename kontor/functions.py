@@ -13,6 +13,7 @@ from kontor.defines import (
 
 from kontor.exceptions import ConnectionBrokenException
 
+logger = logging.getLogger(__name__)
 
 def send_message(connection, address, message: dict):
     """
@@ -26,7 +27,7 @@ def send_message(connection, address, message: dict):
         message : dict
             message to be sent
     """
-    logging.debug("%s: Sending message: %s.", address, message)
+    logger.debug("%s: Sending message: %s.", address, message)
     json_data_str = json.dumps(message)
     connection.sendall(
         bytes(
@@ -51,7 +52,7 @@ def wait_and_receive_message(connection, address) -> dict:
         message : dict
             received message of any type as dict
     """
-    logging.debug("%s: Waiting for response.", address)
+    logger.debug("%s: Waiting for response.", address)
 
     message = {}
 
@@ -98,7 +99,7 @@ def wait_and_receive_message(connection, address) -> dict:
                     binascii.hexlify(bytearray(raw_data_binary)).decode("utf-8").upper()
                 )
 
-                logging.warning(
+                logger.warning(
                     "Discarding unsuitable data: %s (%d bytes).",
                     discarded_data_str,
                     len(raw_data_binary),
@@ -112,7 +113,7 @@ def wait_and_receive_message(connection, address) -> dict:
 
             message_data = raw_data[message_start_marker_index:message_end_marker_index]
             message = json.loads(message_data)
-            logging.debug("%s: Received message: %s.", address, message)
+            logger.debug("%s: Received message: %s.", address, message)
 
             message_end_index = message_end_marker_index + len(MARKER_TRANSMISSION_END)
             if len(raw_data) <= message_end_index:
@@ -137,7 +138,7 @@ def send_file(connection, address, file: bytes):
         file : bytes
             file to be sent
     """
-    logging.debug("%s: Sending file.", address)
+    logger.debug("%s: Sending file.", address)
     connection.send(MARKER_FILE_START)
     connection.sendall(file)
     connection.send(MARKER_FILE_END)
@@ -186,7 +187,7 @@ def wait_and_receive_file(
 
             if received_percents % 10 == 0 and previous_percents != received_percents:
                 previous_percents = received_percents
-                logging.debug(
+                logger.debug(
                     "%s: Receiving file, %d%% (%d / %d).",
                     address,
                     received_percents,
@@ -197,6 +198,6 @@ def wait_and_receive_file(
             processed_file.write(data)
 
         file_upload_time = time.time() - file_start_time
-        logging.debug(
+        logger.debug(
             "%s: File receiving time is %.2f seconds.", address, file_upload_time
         )
