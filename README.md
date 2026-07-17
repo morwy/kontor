@@ -105,6 +105,20 @@ kontor relies on following external packages:
     }
     ```
 
+3. Create `server_users.json` file next to `start_server.py`. Example configuration may look like following (detailed description of each field is provided in [Configuration files breakdown](#configuration-files-breakdown) section):
+
+    ```json
+    [
+        {
+            "username": "test_user",
+            "password_hash": "test_password_hash",
+            "allowed_procedures": [
+                "test_procedure"
+            ]
+        }
+    ]
+    ```
+
 #### Windows-specific
 
 It is possible to run Bureau as service on Windows by using [WinSW v3](https://github.com/winsw/winsw/tree/v3) as bundled tool.
@@ -186,7 +200,11 @@ Configuration file is a JSON file with structure mentioned in [General](#general
 
 #### server_users.json
 
-This file contains the list of authorized users and their credentials.
+Users file is a JSON file with structure mentioned in [General](#general) section. It is a list of dictionaries, each representing an applicant with the following fields:
+
+- `username` - The username of the applicant. Required field.
+- `password_hash` - The hashed password of the applicant. Password is hashed with SHA512 and stored as a string of hexadecimal digits. Required field.
+- `allowed_procedures` - A list of procedure names as strings that the applicant is allowed to execute. These names must correspond to the keys in the `procedures` dictionary of the `server_configuration.json` file. Required field.
 
 ### Enabling SSL connection
 
