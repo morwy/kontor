@@ -76,7 +76,7 @@ kontor relies on following external packages:
         bureau.start()
     ```
 
-2. Create `server_configuration.json` file next to `start_server.py`. Example configuration may look like following (detailed description of each field is provided in [Configuration file breakdown](#configuration-file-breakdown) section):
+2. Create `server_configuration.json` file next to `start_server.py`. Example configuration may look like following (detailed description of each field is provided in [Configuration files breakdown](#configuration-files-breakdown) section):
 
     ```json
     {
@@ -156,27 +156,37 @@ It is possible to run Bureau as service on Windows by using [WinSW v3](https://g
 
 ## Configuration
 
-### Configuration file breakdown
+### Configuration files breakdown
+
+#### server_configuration.json
 
 Configuration file is a JSON file with structure mentioned in [General](#general) section. It contains following fields:
 
-- `ip_address` - IP address to bind Bureau to, default is `localhost`
-- `port` - Port to bind Bureau to, default is `5690`
-- `chunk_size_kilobytes` - Size of each chunk in kilobytes, default is `256`
-- `client_idle_timeout_seconds` - Timeout for idle client connections in seconds, default is `30`
-- `max_storage_period_hours` - Maximum period for which files are stored in hours, default is `0`
-- `max_parallel_connections` - Maximum number of parallel connections allowed, default is `100`
-- `max_consequent_client_procedures` - Maximum number of consequent client procedures allowed, default is `1`
-- `max_grace_shutdown_timeout_seconds` - Timeout for graceful shutdown in seconds, default is `30`
-- `forced_ssl_usage` - Whether to force SSL usage, default is `false`
-- `certificate_path` - Path to the certificate file
-- `certificate_key_path` - Path to the certificate key file
-- `procedures` - List of available procedures
-  - `name` - Name of the procedure
-  - `operation` - Command to execute
-  - `error_codes` - List of error codes
-  - `max_repeats_if_failed` - Maximum number of repeats if the procedure fails
-  - `time_seconds_between_repeats` - Time in seconds between repeats
+- `ip_address` - The IP address on which the bureau server listens for incoming connections. Default is `localhost`.
+- `port` - The port number on which the bureau server listens for incoming connections. Default is `5690`.
+- `chunk_size_kilobytes` - The size of data chunks in kilobytes used for file transmission. Default is `256`.
+- `client_idle_timeout_seconds` - The time in seconds after which an idle client connection is closed by the bureau. Default is `30`.
+- `max_storage_period_hours` - The maximum period in hours for which the bureau can store received files before they are automatically deleted. A value of 0 means no automatic deletion. Default is `0`.
+- `max_parallel_connections` - The maximum number of parallel client connections that the bureau can handle simultaneously. Default is `100`.
+- `max_consequent_client_procedures` - The maximum number of consequent procedures that a single client can execute before being disconnected by the bureau. A value of 0 means no limit. Default is `1`.
+- `max_grace_shutdown_timeout_seconds` - The maximum time in seconds that the bureau waits for ongoing procedures to complete during a graceful shutdown before forcefully terminating them. Default is `30`.
+- `forced_ssl_usage` - A boolean flag indicating whether SSL/TLS encryption is enforced for all communications between the applicant and the bureau. If set to True, all connections must use SSL/TLS; if False, SSL/TLS is optional. Default is `false`.
+- `certificate_path` - The file path to the SSL/TLS certificate used by the bureau for encrypted communications. This should be provided if forced_ssl_usage is True or if SSL/TLS is desired. Default is empty string.
+- `certificate_key_path` - The file path to the private key corresponding to the SSL/TLS certificate used by the bureau. This should be provided if forced_ssl_usage is True or if SSL/TLS is desired. Default is empty string.
+- `procedures` - A dictionary mapping procedure names (strings) to their corresponding ProcedureProtocol objects, representing all procedures available for execution by applicants. Each ProcedureProtocol object contains the following fields:
+  - `name` - The name of the procedure. Also used as a key in the `procedures` dictionary. Required field.
+  - `operation` - A description of the operation performed by the procedure. This can be a command, script, or any other operation that the bureau will execute when the procedure is requested. Required field. May contain following macros:
+    - `<FILE_NAME>` - The path to the input file received from the applicant. It will be replaced with the actual file path when the procedure is executed.
+    - `<FILE_COPY>` - The path to a copy of the input file received from the applicant. This copy is created in the cubicle and can be used for operations that require a separate file. It will be replaced with the actual file path of the copy when the procedure is executed.
+  - `timeout_in_seconds` - The maximum time in seconds that the procedure can take to complete. Default is `60` seconds.
+  - `error_codes` - A list of error codes that will cause the procedure to be considered as failed. If the procedure returns an error code that is not in this list, it will be considered as successful. Default is an empty list, meaning that any exit code will be considered a success.
+  - `max_repeats_if_failed` - The maximum number of times the clerk can repeat the procedure if it fails. Default is `3`.
+  - `time_seconds_between_repeats` - The time in seconds that the clerk must wait between repeat attempts of the procedure after a failure. Default is `10`.
+  - `time_seconds_between_procedures` - The time in seconds that the clerk must wait between executing this procedure and any subsequent procedure, regardless of success or failure. A value of 0 means no waiting time is required between procedures. Default is `0`.
+
+#### server_users.json
+
+This file contains the list of authorized users and their credentials.
 
 ### Enabling SSL connection
 
