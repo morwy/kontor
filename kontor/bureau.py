@@ -351,6 +351,7 @@ class Bureau:
                     ),
                 )
                 thread.start()
+
                 self.__clerks.append(clerk)
                 self.__client_threads.append(thread)
 

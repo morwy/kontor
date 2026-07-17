@@ -100,7 +100,7 @@ class BureauApplicant:
                 _ = ssl.get_server_certificate((server_ip_address, server_port))
 
             is_server_use_ssl = True
-        except Exception as exception: # pylint: disable=broad-except
+        except Exception as exception:  # pylint: disable=broad-except
             logger.info(
                 "Server does not use SSL, falling back to non-SSL connection. Exception message: %s.",
                 exception,
@@ -192,7 +192,7 @@ class BureauApplicant:
             file_data = file.read()
 
         file_data_crc32 = binascii.crc32(file_data) & 0xFFFFFFFF
-        file_data_crc32_str = "%08X" % file_data_crc32
+        file_data_crc32_str = f"{file_data_crc32:08X}"
 
         procedure_request = ProcedureRequestMessage(
             procedure=procedure,
@@ -205,6 +205,7 @@ class BureauApplicant:
         send_message(
             self.__socket, self.__address, dataclasses.asdict(procedure_request)
         )
+
         response_json_data = wait_and_receive_message(self.__socket, self.__address)
         procedure_response = from_dict(
             data_class=ProcedureResponseMessage,
@@ -225,6 +226,7 @@ class BureauApplicant:
             )
 
         send_file(self.__socket, self.__address, file_data)
+
         response_json_data = wait_and_receive_message(self.__socket, self.__address)
         file_receiving_receipt = from_dict(
             data_class=FileReceivingReceiptMessage,
@@ -290,7 +292,7 @@ class BureauApplicant:
         with open(corrected_file_path, "rb") as processed_file:
             data = processed_file.read()
             data_crc32 = binascii.crc32(data) & 0xFFFFFFFF
-            data_crc32_str = "%08X" % data_crc32
+            data_crc32_str = f"{data_crc32:08X}"
             logger.debug("%s: Received file CRC32: %s.", self.__address, data_crc32_str)
 
         if data_crc32_str != procedure_receipt.file_crc32:
@@ -301,7 +303,7 @@ class BureauApplicant:
                 procedure_receipt.file_crc32,
             )
             raise ProcedureApprovalException(
-                f"{self.__address}: File is received incorrectly, received CRC32 {data_crc32} differs to provided CRC32 {procedure_receipt.file_crc32}."
+                f"{self.__address}: File is received incorrectly, received CRC32 {data_crc32_str} differs to provided CRC32 {procedure_receipt.file_crc32}."
             )
 
         file_size_bytes = os.path.getsize(corrected_file_path)
@@ -343,7 +345,7 @@ class BureauApplicant:
                 self.__wait_and_receive_result_file(file_path, overwrite_file)
                 break
 
-            except Exception as exception: # pylint: disable=broad-except
+            except Exception as exception:  # pylint: disable=broad-except
                 logger.error("Caught exception: '%s'.", type(exception))
                 if retry_index == (max_retries_if_failed - 1):
                     logger.error(
