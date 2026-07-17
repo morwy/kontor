@@ -12,10 +12,10 @@ kontor is a client-server bundle that is designed to execute pre-defined procedu
 
 Most of the class names are based on the word-play around white-collar office work:
 
-- **Bureau** is a service handling incoming requests
-- **Clerk** is a server-side request processing entity
-- **Applicant** is a client
-- **Cubicle** is temporary storage for files per applicant
+- **Bureau** is a server-side frontline service handling incoming requests and redirecting them to appropriate **Clerk** for processing
+- **Clerk** is a server-side main request processing entity
+- **Cubicle** is temporary storage for processing files received from an applicant
+- **Applicant** is a client, requesting a procedure and waiting for the results
 - and so on...
 
 ## Installation
@@ -38,7 +38,65 @@ kontor relies on following external packages:
 
 ### Bureau
 
-#### Windows
+#### General
+
+1. Create a `start_server.py` file and add following text there (this file is also present in `examples/server` repo folder):
+
+    ```python
+    #!/usr/bin/env python
+    import logging
+    import os
+    import signal
+    import sys
+
+    from kontor.bureau import Bureau
+
+
+    def shutdown_signal_handler(sig, frame):
+        logging.critical("Caught SIGINT signal, bureau will be shut down.")
+        sys.exit(0)
+
+
+    if __name__ == "__main__":
+        #
+        # Catch Ctrl+C signal for notifying about bureau shutdown.
+        #
+        signal.signal(signal.SIGINT, shutdown_signal_handler)
+
+        bureau = Bureau(os.path.dirname(os.path.realpath(__file__)))
+        bureau.start()
+    ```
+
+2. Create `server_configuration.json` file next to `start_server.py`. Example configuration may look like following:
+
+    ```json
+    {
+        "ip_address": "localhost",
+        "port": 5690,
+        "chunk_size_kilobytes": 256,
+        "client_idle_timeout_seconds": 30,
+        "max_storage_period_hours": 0,
+        "max_parallel_connections": 100,
+        "max_consequent_client_procedures": 1,
+        "max_grace_shutdown_timeout_seconds": 30,
+        "forced_ssl_usage": false,
+        "certificate_path" : "~/test_certificate.cer",
+        "certificate_key_path" : "~/test_certificate.key",
+        "procedures": {
+            "test_procedure": {
+                "name": "test_procedure",
+                "operation": "echo \"this is a test procedure\"",
+                "error_codes": [
+                    1
+                ],
+                "max_repeats_if_failed": 3,
+                "time_seconds_between_repeats": 10
+            }
+        }
+    }
+    ```
+
+#### Windows-specific
 
 It is possible to run Bureau as service on Windows by using [WinSW v3](https://github.com/winsw/winsw/tree/v3) as bundled tool.
 
@@ -48,99 +106,44 @@ It is possible to run Bureau as service on Windows by using [WinSW v3](https://g
 4. Rename it to `kontor.exe`
 5. Create a `kontor.xml` configuration file and add following text there:
 
-```xml
-<service>
-  <id>kontor</id>
-  <name>kontor</name>
-  <description>This service runs kontor as Windows service.</description>
-  <executable>python</executable>
-  <arguments>start_server.py</arguments>
-  <log mode="none" />
-  <onfailure action="restart" />
-</service>
-```
+    ```xml
+    <service>
+        <id>kontor</id>
+        <name>kontor</name>
+        <description>This service runs kontor as Windows service.</description>
+        <executable>python</executable>
+        <arguments>start_server.py</arguments>
+        <log mode="none" />
+        <onfailure action="restart" />
+    </service>
+    ```
 
-6. Create a `start_server.py` file and add following text there (this file is also present in `examples/server` repo folder):
-
-```python
-#!/usr/bin/env python
-import logging
-import os
-import signal
-import sys
-
-from kontor.bureau import Bureau
-
-
-def shutdown_signal_handler(sig, frame):
-    logging.critical("Caught SIGINT signal, bureau will be shut down.")
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    #
-    # Catch Ctrl+C signal for notifying about bureau shutdown.
-    #
-    signal.signal(signal.SIGINT, shutdown_signal_handler)
-
-    bureau = Bureau(os.path.dirname(os.path.realpath(__file__)))
-    bureau.start()
-```
-
+6. Create kontor-specific files according to the instructions in [General](#general) section and put them to `C:\kontor` folder.
 7. Install kontor as a service by calling following command in CMD:
 
-```batch
-kontor install
-```
+    ```batch
+    kontor install
+    ```
 
-8. Create `server_configuration.json` file next to `start_server.py`. Example configuration may look like following:
+8. Start service by calling the command:
 
-```json
-{
-    "ip_address": "localhost",
-    "port": 5690,
-    "chunk_size_kilobytes": 256,
-    "client_idle_timeout_seconds": 30,
-    "max_storage_period_hours": 0,
-    "max_parallel_connections": 100,
-    "max_consequent_client_procedures": 1,
-    "max_grace_shutdown_timeout_seconds": 30,
-    "forced_ssl_usage": false,
-    "certificate_path" : "~/test_certificate.cer",
-    "certificate_key_path" : "~/test_certificate.key",
-    "procedures": {
-        "test_procedure": {
-            "name": "test_procedure",
-            "operation": "echo \"this is a test procedure\"",
-            "error_codes": [
-                1
-            ],
-            "max_repeats_if_failed": 3,
-            "time_seconds_between_repeats": 10
-        }
-    }
-}
-```
+    ```batch
+    kontor start
+    ```
 
-9. Start service by calling the command:
+9. [WinSW CLI instruction](https://github.com/winsw/winsw/blob/v3/docs/cli-commands.md) has a lot more of useful commands that can be applied. Most useful though would be following:
 
-```batch
-kontor start
-```
+    ```batch
+    kontor stop
+    ```
 
-10. [WinSW CLI instruction](https://github.com/winsw/winsw/blob/v3/docs/cli-commands.md) has a lot more of useful commands that can be applied. Most useful though would be following:
+    ```batch
+    kontor restart
+    ```
 
-```batch
-kontor stop
-```
-
-```batch
-kontor restart
-```
-
-```batch
-kontor uninstall
-```
+    ```batch
+    kontor uninstall
+    ```
 
 ## Configuration
 
