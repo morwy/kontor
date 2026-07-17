@@ -17,7 +17,7 @@ class ApplicantDossier:
     Attributes:
         username: The username of the applicant.
         password_hash: The hashed password of the applicant. Password is hashed with SHA512 and stored as a string of hexadecimal digits.
-        allowed_procedures: A list of procedure names that the applicant is allowed to execute.
+        allowed_procedures: A list of procedure names as strings that the applicant is allowed to execute. These names must correspond to the keys in the `procedures` dictionary of the `server_configuration.json` file. Required field.
     """
 
     username: str = ""
