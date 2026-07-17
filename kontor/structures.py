@@ -17,7 +17,7 @@ class ApplicantDossier:
     Attributes:
         username: The username of the applicant.
         password_hash: The hashed password of the applicant. Password is hashed with SHA512 and stored as a string of hexadecimal digits.
-        allowed_procedures: A list of procedure names that the applicant is allowed to execute.
+        allowed_procedures: A list of procedure names as strings that the applicant is allowed to execute. These names must correspond to the keys in the `procedures` dictionary of the `server_configuration.json` file. Required field.
     """
 
     username: str = ""
@@ -34,7 +34,7 @@ class ProcedureProtocol:
         name: The name of the procedure.
         operation: A description of the operation performed by the procedure.
         timeout_in_seconds: The maximum time in seconds that the procedure can take to complete. Default is 60 seconds.
-        error_codes: A list of error codes that can be returned by the procedure in case of failure.
+        error_codes: A list of error codes that will cause the procedure to be considered as failed. If the procedure returns an error code that is not in this list, it will be considered as successful. Default is an empty list, meaning that any exit code will be considered a success.
         max_repeats_if_failed: The maximum number of times the clerk can repeat the procedure if it fails.
         time_seconds_between_repeats: The time in seconds that the clerk must wait between repeat attempts of the procedure after a failure.
         time_seconds_between_procedures: The time in seconds that the clerk must wait between executing this procedure and any subsequent procedure, regardless of success or failure. A value of 0 means no waiting time is required between procedures.
