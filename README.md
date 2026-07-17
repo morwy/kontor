@@ -20,11 +20,12 @@ Most of the class names are based on the word-play around white-collar office wo
 
 ## Versioning
 
-kontor follows semantic versioning (SemVer) principles. Version numbers are in the format `MAJOR.MINOR.PATCH`:
+kontor follows semantic versioning (SemVer) principles. Version numbers are in the format `MAJOR.MINOR.PATCH.DEV` where:
 
-- `MAJOR` version is incremented when new functionality or bug fixes are added in a ***non-backwards-compatible*** manner and there are incompatible API changes
+- `MAJOR` version is incremented when new functionality or bug fixes are added on the protocol level in a ***non-backwards-compatible*** manner OR there are incompatible API changes
 - `MINOR` version is incremented when new functionality or bug fixes are added in a ***backwards-compatible*** manner
-- `PATCH` version is ignored since kontor releases do not happen that often
+- `PATCH` version is ignored since kontor releases do not happen that often, set to `0` for all releases
+- `DEV` version is incremented for development releases and is not intended for production use, may be in format `devN`, e.g. `dev1`, `dev2`, `dev3`, etc.
 
 ## Installation
 
