@@ -76,7 +76,7 @@ kontor relies on following external packages:
         bureau.start()
     ```
 
-2. Create `server_configuration.json` file next to `start_server.py`. Example configuration may look like following:
+2. Create `server_configuration.json` file next to `start_server.py`. Example configuration may look like following (detailed description of each field is provided in [Configuration file breakdown](#configuration-file-breakdown) section):
 
     ```json
     {
@@ -156,6 +156,28 @@ It is possible to run Bureau as service on Windows by using [WinSW v3](https://g
 
 ## Configuration
 
+### Configuration file breakdown
+
+Configuration file is a JSON file with structure mentioned in [General](#general) section. It contains following fields:
+
+- `ip_address` - IP address to bind Bureau to, default is `localhost`
+- `port` - Port to bind Bureau to, default is `5690`
+- `chunk_size_kilobytes` - Size of each chunk in kilobytes, default is `256`
+- `client_idle_timeout_seconds` - Timeout for idle client connections in seconds, default is `30`
+- `max_storage_period_hours` - Maximum period for which files are stored in hours, default is `0`
+- `max_parallel_connections` - Maximum number of parallel connections allowed, default is `100`
+- `max_consequent_client_procedures` - Maximum number of consequent client procedures allowed, default is `1`
+- `max_grace_shutdown_timeout_seconds` - Timeout for graceful shutdown in seconds, default is `30`
+- `forced_ssl_usage` - Whether to force SSL usage, default is `false`
+- `certificate_path` - Path to the certificate file
+- `certificate_key_path` - Path to the certificate key file
+- `procedures` - List of available procedures
+  - `name` - Name of the procedure
+  - `operation` - Command to execute
+  - `error_codes` - List of error codes
+  - `max_repeats_if_failed` - Maximum number of repeats if the procedure fails
+  - `time_seconds_between_repeats` - Time in seconds between repeats
+
 ### Enabling SSL connection
 
 #### Linux (Ubuntu)
@@ -200,7 +222,7 @@ It is possible to run Bureau as service on Windows by using [WinSW v3](https://g
         ...
     ```
 
-## Bureau-applicant interaction flowchart
+## Bureau-applicant interaction flowchart (version 1)
 
 <center>
 
