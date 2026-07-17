@@ -18,6 +18,14 @@ Most of the class names are based on the word-play around white-collar office wo
 - **Applicant** is a client, requesting a procedure and waiting for the results
 - and so on...
 
+## Versioning
+
+kontor follows semantic versioning (SemVer) principles. Version numbers are in the format `MAJOR.MINOR.PATCH`:
+
+- `MAJOR` version is incremented when new functionality or bug fixes are added in a ***non-backwards-compatible*** manner and there are incompatible API changes
+- `MINOR` version is incremented when new functionality or bug fixes are added in a ***backwards-compatible*** manner
+- `PATCH` version is ignored since kontor releases do not happen that often
+
 ## Installation
 
 **kontor** can be installed or upgraded by simply calling **pip** command:
