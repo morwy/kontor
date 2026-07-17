@@ -160,45 +160,45 @@ It is possible to run Bureau as service on Windows by using [WinSW v3](https://g
 
 #### Linux (Ubuntu)
 
-0. Install **ca-certificates** application, if needed:
+1. Install **ca-certificates** application, if needed:
 
-```bash
-sudo apt-get install -y ca-certificates
-```
+    ```bash
+    sudo apt-get install -y ca-certificates
+    ```
 
-1. Generate a Certificate Authority (CA):
+2. Generate a Certificate Authority (CA):
 
-```bash
-openssl genrsa -out kontor.key 2048
-```
+    ```bash
+    openssl genrsa -out kontor.key 2048
+    ```
 
-2. Self-sign the newly created Certificate Authority (CA):
+3. Self-sign the newly created Certificate Authority (CA):
 
-```bash
-openssl req -x509 -new -nodes -key kontor.key -sha256 -days 365 -out kontor.crt
-```
+    ```bash
+    openssl req -x509 -new -nodes -key kontor.key -sha256 -days 365 -out kontor.crt
+    ```
 
-3. Copy newly generated certificate to local certificate folder:
+4. Copy newly generated certificate to local certificate folder:
 
-```bash
-sudo cp kontor.crt /usr/local/share/ca-certificates
-```
+    ```bash
+    sudo cp kontor.crt /usr/local/share/ca-certificates
+    ```
 
-4. Update current list of used certificates:
+5. Update current list of used certificates:
 
-```bash
-sudo update-ca-certificates
-```
+    ```bash
+    sudo update-ca-certificates
+    ```
 
-5. Add `kontor.crt` and `kontor.key` to server configuration with `forced_ssl_usage` set to `true`:
+6. Add `kontor.crt` and `kontor.key` to server configuration with `forced_ssl_usage` set to `true`:
 
-```json
-    ...
-    "forced_ssl_usage": true,
-    "certificate_path" : "kontor.crt",
-    "certificate_key_path" : "kontor.key",
-    ...
-```
+    ```json
+        ...
+        "forced_ssl_usage": true,
+        "certificate_path" : "kontor.crt",
+        "certificate_key_path" : "kontor.key",
+        ...
+    ```
 
 ## Bureau-applicant interaction flowchart
 
