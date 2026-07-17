@@ -5,9 +5,18 @@
 [![License](https://img.shields.io/pypi/l/kontor.svg)](https://pypi.python.org/pypi/kontor/)
 [![Tests](https://github.com/morwy/kontor/actions/workflows/python-tests.yml/badge.svg)](https://github.com/morwy/kontor/actions/workflows/python-tests.yml)
 
+> [!WARNING]
+> Currently kontor is in pre-alpha stage, providing no secure way of transferring the files!
+
 kontor is a client-server bundle that is designed to execute pre-defined procedures on server by request of authorized client.
 
-Currently kontor is in pre-alpha stage, providing no secure way of transferring the files.
+Most of the class names are based on the word-play around white-collar office work:
+
+- **Bureau** is a service handling incoming requests
+- **Clerk** is a server-side request processing entity
+- **Applicant** is a client
+- **Cubicle** is temporary storage for files per applicant
+- and so on...
 
 ## Installation
 
